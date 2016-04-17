@@ -875,6 +875,8 @@ pcap_ng_check_header(bpf_u_int32 magic, FILE *fp, u_int precision, char *errbuf,
 	bhdrp->block_type = magic;
 	bhdrp->total_length = total_length;
 	shbp->byte_order_magic = byte_order_magic;
+    p->lastpkt_offset = bhdrp->total_length;
+
 	if (read_bytes(fp,
 	    (u_char *)p->buffer + (sizeof(magic) + sizeof(total_length) + sizeof(byte_order_magic)),
 	    total_length - (sizeof(magic) + sizeof(total_length) + sizeof(byte_order_magic)),
@@ -924,6 +926,8 @@ pcap_ng_check_header(bpf_u_int32 magic, FILE *fp, u_int precision, char *errbuf,
 		}
 		if (status == -1)
 			goto fail;	/* error */
+        p->lastpkt_offset += cursor.data_remaining + sizeof(struct block_header)
+                             + sizeof(struct block_trailer);
 		switch (cursor.block_type) {
 
 		case BT_IDB:
@@ -992,6 +996,8 @@ done:
 	p->next_packet_op = pcap_ng_next_packet;
 	p->cleanup_op = pcap_ng_cleanup;
 
+    p->current_offset = p->lastpkt_offset;
+
 	return (p);
 
 fail:
@@ -1045,6 +1051,10 @@ pcap_ng_next_packet(pcap_t *p, struct pcap_pkthdr *hdr, u_char **data)
 			return (1);	/* EOF */
 		if (status == -1)
 			return (-1);	/* error */
+        p->lastpkt_offset = p->current_offset;
+        p->current_offset += cursor.data_remaining
+            + sizeof(struct block_header)
+            + sizeof(struct block_trailer);
 		switch (cursor.block_type) {
 
 		case BT_EPB:
@@ -1074,6 +1084,8 @@ pcap_ng_next_packet(pcap_t *p, struct pcap_pkthdr *hdr, u_char **data)
 				t = ((u_int64_t)epbp->timestamp_high) << 32 |
 				    epbp->timestamp_low;
 			}
+            p->lastpkt_offset += sizeof(struct block_header)
+                                 + sizeof(struct enhanced_packet_block);
 			goto found;
 
 		case BT_SPB:
@@ -1110,6 +1122,9 @@ pcap_ng_next_packet(pcap_t *p, struct pcap_pkthdr *hdr, u_char **data)
 			if (hdr->caplen > p->snapshot)
 				hdr->caplen = p->snapshot;
 			t = 0;	/* no time stamps */
+
+            p->lastpkt_offset += sizeof(struct block_header)
+                                 + sizeof(struct simple_packet_block);
 			goto found;
 
 		case BT_PB:
@@ -1139,6 +1154,8 @@ pcap_ng_next_packet(pcap_t *p, struct pcap_pkthdr *hdr, u_char **data)
 				t = ((u_int64_t)pbp->timestamp_high) << 32 |
 				    pbp->timestamp_low;
 			}
+            p->lastpkt_offset += sizeof(struct block_header)
+                                 + sizeof(struct packet_block);
 			goto found;
 
 		case BT_IDB:

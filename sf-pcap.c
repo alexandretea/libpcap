@@ -257,7 +257,6 @@ pcap_check_header(bpf_u_int32 magic, FILE *fp, u_int precision, char *errbuf,
 	p->snapshot = hdr.snaplen;
 	p->linktype = linktype_to_dlt(LT_LINKTYPE(hdr.linktype));
 	p->linktype_ext = LT_LINKTYPE_EXT(hdr.linktype);
-
 	p->next_packet_op = pcap_next_packet;
 
 	ps = p->priv;
@@ -407,7 +406,7 @@ pcap_check_header(bpf_u_int32 magic, FILE *fp, u_int precision, char *errbuf,
 	}
 
 	p->cleanup_op = sf_cleanup;
-
+    p->current_offset = sizeof(struct pcap_file_header);
 	return (p);
 }
 
@@ -615,6 +614,9 @@ pcap_next_packet(pcap_t *p, struct pcap_pkthdr *hdr, u_char **data)
 	if (p->swapped)
 		swap_pseudo_headers(p->linktype, hdr, *data);
 
+    p->current_offset += ps->hdrsize;
+    p->lastpkt_offset = p->current_offset;
+    p->current_offset += hdr->caplen;
 	return (0);
 }
 

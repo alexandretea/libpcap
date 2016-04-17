@@ -303,6 +303,26 @@ pcap_next_ex(pcap_t *p, struct pcap_pkthdr **pkt_header,
 	return (p->read_op(p, 1, p->oneshot_callback, (u_char *)&s));
 }
 
+const u_char *
+pcap_next_with_file_offset(pcap_t *p, struct pcap_pkthdr *pkt_header,
+        long *file_offset)
+{
+    const u_char *ret = pcap_next(p, pkt_header);
+
+    *file_offset = p->lastpkt_offset;
+    return ret;
+}
+
+int
+pcap_next_ex_with_file_offset(pcap_t *p, struct pcap_pkthdr **pkt_header,
+                         const u_char **pkt_data, long *file_offset)
+{
+    int ret = pcap_next_ex(p, pkt_header, pkt_data);
+
+    *file_offset = p->lastpkt_offset;
+    return ret;
+}
+
 #if defined(DAG_ONLY)
 int
 pcap_findalldevs(pcap_if_t **alldevsp, char *errbuf)
