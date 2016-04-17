@@ -304,22 +304,24 @@ pcap_next_ex(pcap_t *p, struct pcap_pkthdr **pkt_header,
 }
 
 const u_char *
-pcap_next_with_file_offset(pcap_t *p, struct pcap_pkthdr *pkt_header,
-        long *file_offset)
+pcap_next_with_sf_offset(pcap_t *p, struct pcap_pkthdr *pkt_header,
+        long *sf_offset)
 {
     const u_char *ret = pcap_next(p, pkt_header);
 
-    *file_offset = p->lastpkt_offset;
+    // sf_offset is set to -1 if live capture
+    *sf_offset = (p->rfile != NULL ? p->lastpkt_offset : -1);
     return ret;
 }
 
 int
-pcap_next_ex_with_file_offset(pcap_t *p, struct pcap_pkthdr **pkt_header,
-                         const u_char **pkt_data, long *file_offset)
+pcap_next_ex_with_sf_offset(pcap_t *p, struct pcap_pkthdr **pkt_header,
+                         const u_char **pkt_data, long *sf_offset)
 {
     int ret = pcap_next_ex(p, pkt_header, pkt_data);
 
-    *file_offset = p->lastpkt_offset;
+    // sf_offset is set to -1 if live capture
+    *sf_offset = (p->rfile != NULL ? p->lastpkt_offset : -1);
     return ret;
 }
 
